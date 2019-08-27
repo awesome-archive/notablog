@@ -1,6 +1,6 @@
 const fs = require('fs')
 const path = require('path')
-const Sqrl = require('squirrelly')
+const ejs = require('ejs')
 
 const { log } = require('./utils')
 
@@ -34,10 +34,21 @@ function renderIndex(task) {
   const workDir = process.cwd()
   const outDir = path.join(workDir, 'public')
   const indexPath = path.join(outDir, 'index.html')
-  
-  Sqrl.autoEscaping(false)
-  const html = Sqrl.Render(templateProvider.get('index'), {
-    siteMeta
-  })
+
+  // Sqrl.autoEscaping(false)
+  // const html = Sqrl.Render(templateProvider.get('index'), {
+  //   siteMeta
+  // })
+
+  const template = templateProvider.get('index')
+  const html = ejs.render(
+    template.string,
+    {
+      siteMeta
+    },
+    {
+      filename: template.filename
+    })
+
   fs.writeFileSync(indexPath, html, { encoding: 'utf-8' })
 }

@@ -4,7 +4,7 @@ const path = require('path')
 const NotionAgent = require('notionapi-agent')
 const { getOnePageAsTree } = require('nast-util-from-notionapi')
 const { renderToHTML } = require('nast-util-to-html')
-const Sqrl = require('squirrelly')
+const ejs = require('ejs')
 
 const { log, parseJSON } = require('./utils')
 
@@ -92,14 +92,29 @@ async function renderPost(task) {
     const outDir = path.join(workDir, 'public')
     const postPath = path.join(outDir, post.url)
 
-    Sqrl.autoEscaping(false)
-    const html = Sqrl.Render(templateProvider.get(post.template), {
-      siteMeta,
-      post: {
-        ...post,
-        contentHTML
-      }
-    })
+    // Sqrl.autoEscaping(false)
+    // const html = Sqrl.Render(templateProvider.get(post.template), {
+    //   siteMeta,
+    //   post: {
+    //     ...post,
+    //     contentHTML
+    //   }
+    // })
+
+    const template = templateProvider.get(post.template)
+    const html = ejs.render(
+      template.string,
+      {
+        siteMeta,
+        post: {
+          ...post,
+          contentHTML
+        }
+      },
+      {
+        filename: template.filename
+      })
+      
     await fsPromises.writeFile(postPath, html, { encoding: 'utf-8' })
   }
 }

@@ -23,8 +23,9 @@ class TemplateProvider {
     if (DEBUG_EN) console.log(`Get template ${templateName}`)
     if (typeof templateName === 'string') {
       let template = this.templateMap[templateName]
-      if (template) return template
-      else return this._load(templateName)
+      let templatePath = path.join(this.templateDir, `${templateName}.html`)
+      if (template) return { string: template, filename: templatePath }
+      else return { string: this._load(templateName), filename: templatePath }
     } else {
       return `${templateName} is not a string`
     }
