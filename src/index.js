@@ -5,6 +5,7 @@ const TaskManager = require('@dnpr/task-manager')
 const { copyDirSync } = require('@dnpr/fsutil')
 
 const TemplateProvider = require('./template-provider')
+const CacheProvider = require('./cache-provider')
 const { parseTable } = require('./parse-table')
 const { renderIndex } = require('./render-index')
 const { renderPost } = require('./render-post')
@@ -37,7 +38,7 @@ async function main() {
     let startTime = Date.now()
 
     /** Init dir paths. */
-    const cacheDir = path.join(workDir, 'source/notion_cache')
+    const cacheDir = path.join(workDir, 'source')
     if (!fs.existsSync(cacheDir)) {
       fs.mkdirSync(cacheDir, { recursive: true })
     }
@@ -69,9 +70,13 @@ async function main() {
     /** Create TemplateProvider instance */
     let templateProvider = new TemplateProvider(themeDir)
 
+    /** Create CacheProvider instance */
+    const cacheProvider = new CacheProvider(cacheDir)
+
     let renderIndexTask = {
       siteMeta,
       templateProvider,
+      cacheProvider,
       operations: {
         enablePlugin: true
       },
@@ -88,28 +93,26 @@ async function main() {
     let postPublishedCount = siteMeta.pages.filter(page => page.publish).length
     let renderPostTasks = siteMeta.pages
       .map(post => {
-        let cacheFileName = post.id.replace(/\/|\\/g, '') + '.json'
-        let cacheFilePath = path.join(cacheDir, cacheFileName)
+        const cacheUri = `notion://${post.id}`
+        const lastEditedTime = post.lastEditedTime
+        const cacheIsLatest = cacheProvider.wasCache(cacheUri).updatedAfter(lastEditedTime)
+        const postUpdated = !cacheIsLatest
 
-        let postUpdated
-        if (fs.existsSync(cacheFilePath)) {
-          let lastCacheTime = fs.statSync(cacheFilePath).mtimeMs
-          postUpdated = post.lastEditedTime > lastCacheTime
-          if (!postUpdated) postUpdatedCount -= 1
-        } else {
-          postUpdated = true
+        if (!postUpdated) {
+          postUpdatedCount -= 1
         }
 
         return {
           siteMeta,
           templateProvider,
+          cacheProvider,
           post: {
             ...post,
-            cachePath: cacheFilePath
+            cacheUri
           },
           operations: {
             doFetchPage: postUpdated,
-            enablePlugin: true
+            enablePlugin: false
           },
           plugins
         }

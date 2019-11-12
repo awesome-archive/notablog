@@ -6,7 +6,7 @@ const { getOnePageAsTree } = require('nast-util-from-notionapi')
 const { renderToHTML } = require('nast-util-to-html')
 const Sqrl = require('squirrelly')
 
-const { log, parseJSON } = require('./utils')
+const { log } = require('./utils')
 
 module.exports = {
   renderPost
@@ -28,7 +28,7 @@ module.exports = {
 /**
  * @typedef {Object} RenderPostTask
  * @property {SiteMetadata} siteMeta
- * @property {Object} post - ...PageMetadata + cachePath
+ * @property {Object} post - ...PageMetadata + cacheUri
  * @property {PostOperation} operations
  * @property {NotablogPlugin[]} plugins
  */
@@ -36,19 +36,17 @@ module.exports = {
 /**
  * Render a post.
  * @param {RenderPostTask} task
- * // TODO: May be attach a CacheProvider instance in task to handle cache 
- * lookup and update operations. Index doesn't go through this pipeline.
  */
 async function renderPost(task) {
   if (task != null) {
     const siteMeta = task.siteMeta
     const templateProvider = task.templateProvider
+    const cacheProvider = task.cacheProvider
     const post = task.post
     const operations = task.operations
     const plugins = task.plugins
 
     const pageID = post.id
-    const cachePath = post.cachePath
 
     let nast, contentHTML
 
@@ -56,21 +54,15 @@ async function renderPost(task) {
     if (operations.doFetchPage) {
       log.info(`Fetch page ${pageID}`)
       nast = await getOnePageAsTree(pageID, new NotionAgent({ suppressWarning: true, verbose: false }))
-      fs.writeFile(cachePath, JSON.stringify(nast), (err) => {
-        if (err) console.error(err)
-        else log.info(`Cache of ${pageID} is saved`)
-      })
+      cacheProvider.set(post.cacheUri, nast)
     } else {
       log.info(`Read page cache ${pageID}`)
-      let cache = await fsPromises.readFile(cachePath, { encoding: 'utf-8' })
-      let _nast = parseJSON(cache)
-      if (_nast != null) nast = _nast
-      else throw new Error(`Cache of ${pageID} is corrupted, delete source/notion_cache to rebuild`)
+      nast = cacheProvider.get(post.cacheUri)
     }
 
     /** Run `beforeRender` plugins. */
-    log.info(`Run beforeRender plugins on ${pageID}`)
     if (operations.enablePlugin) {
+      log.info(`Run beforeRender plugins on ${pageID}`)
       plugins.forEach(plugin => {
         if (typeof plugin.func === 'function')
           plugin.func.call({
