@@ -4,6 +4,7 @@
   "description": "Generate a minimalistic blog from a Notion.so table.",
   "main": "src/index",
   "scripts": {
+    "test": "INDENT=true node test/cache-provider.js",
     "release": "npm run report:deps_graph && npm publish",
     "report:deps_graph": "npx depcruise --exclude '^node_modules' --output-type dot --prefix 'https://github.com/dragonman225/notablog/tree/master/' src/index.js | dot -T svg > assets/deps_graph.svg",
     "upgrade": "node tools/upgrade-deps.js"
@@ -25,16 +26,17 @@
   },
   "homepage": "https://github.com/dragonman225/notablog",
   "devDependencies": {
-    "dependency-cruiser": "5.2.2",
-    "eslint": "6.6.0"
+    "dependency-cruiser": "5.3.2",
+    "eslint": "6.6.0",
+    "zora": "^3.1.5"
   },
   "dependencies": {
     "@dnpr/fsutil": "0.1.3",
     "@dnpr/logger": "0.2.0",
     "@dnpr/task-manager": "0.1.2",
     "nast-util-from-notionapi": "0.7.0",
-    "nast-util-to-html": "0.2.7",
+    "nast-util-to-html": "0.2.8",
     "notionapi-agent": "0.7.2",
-    "squirrelly": "7.7.0"
+    "squirrelly": "7.9.0"
   }
 }
