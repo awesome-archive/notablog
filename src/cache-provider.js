@@ -1,5 +1,6 @@
 const path = require('path')
 const fs = require('fs')
+const fsPromises = fs.promises
 
 const { log } = require('./utils')
 
@@ -14,45 +15,52 @@ class CacheProvider {
    */
   constructor(cacheDir) {
     this.cacheDir = cacheDir
+    this.getCachePath = getCachePath.bind(this)
   }
+
+
 
   /**
    * Get cache object by its uri.
    * @param {string} cacheUri - The uri of a cache object.
-   * @returns {*} The cache object.
+   * @returns {Promise<*>} The cache object.
    */
-  get(cacheUri) {
+  async get(cacheUri) {
     log.debug(`Get cache "${cacheUri}"`)
 
-    const filename = getCachePath(cacheUri, this.cacheDir)
+    const cachePath = this.getCachePath(cacheUri)
+
     let fileContent, cacheObj
 
     try {
-      fileContent = fs.readFileSync(filename, { encoding: 'utf-8' })
+      fileContent = await fsPromises
+        .readFile(cachePath, { encoding: 'utf-8' })
     } catch (error) {
-      log.error(`Fail to read cache ${filename}`)
+      log.error(`Fail to read cache from ${cachePath}`)
       return undefined
     }
 
     try {
       cacheObj = JSON.parse(fileContent)
     } catch (error) {
-      log.error(`Fail to parse JSON ${filename}`)
+      log.error(`Fail to parse JSON from ${cachePath}`)
       return undefined
     }
 
     return cacheObj
   }
 
+
+
   /**
-   * Set 
-   * @param {string} cacheUri 
+   * Set cache object by its uri.
+   * @param {string} cacheUri - The uri of a cache object.
    * @param {*} cacheData 
    */
-  set(cacheUri, cacheData) {
+  async set(cacheUri, cacheData) {
     log.debug(`Set cache "${cacheUri}"`)
 
-    const filename = getCachePath(cacheUri, this.cacheDir)
+    const cachePath = this.getCachePath(cacheUri)
 
     const notionCacheDir = path.join(this.cacheDir, CACHE_NAMESPACE.notion)
     if (!fs.existsSync(notionCacheDir)) {
@@ -60,23 +68,38 @@ class CacheProvider {
     }
 
     try {
-      fs.writeFileSync(filename, JSON.stringify(cacheData), { encoding: 'utf-8' })
+      const serializedCacheData = JSON.stringify(cacheData)
+      await fsPromises
+        .writeFile(cachePath, serializedCacheData, { encoding: 'utf-8' })
     } catch (error) {
-      log.error(`Fail to write cache ${filename}`)
+      log.error(`Fail to write cache to ${cachePath}`)
     }
   }
 
+
+
+  /**
+   * Ask a question about a cache object by its uri.
+   * @param {string} cacheUri - The uri of a cache object.
+   */
   wasCache(cacheUri) {
-    const file = getCachePath(cacheUri, this.cacheDir)
+    const cachePath = this.getCachePath(cacheUri)
 
     return {
-      updatedAfter: function (timeMs) {
+      /**
+       * Whether the cache object file was modified (updated) after a
+       * given timestamp.
+       * @param {number} timeMs
+       * @returns {boolean} 
+       */
+      updatedAfter: function (lastEditedTime) {
 
         try {
-          const lastCacheTime = fs.statSync(file).mtimeMs
-          const updated = timeMs > lastCacheTime
-          return updated
+          const lastCacheTime = fs.statSync(cachePath).mtimeMs
+          const ans = lastCacheTime > lastEditedTime
+          return ans
         } catch (error) {
+          log.error(error)
           return false
         }
 
@@ -109,10 +132,9 @@ function evalCacheUri(cacheUri) {
 /**
  * Get cache file path.
  * @param {string} cacheUri 
- * @param {string} cacheDir
  * @returns {string}
  */
-function getCachePath(cacheUri, cacheDir) {
+function getCachePath(cacheUri) {
   const uri = evalCacheUri(cacheUri)
   const protocol = uri.protocol
   const key = uri.key
@@ -123,7 +145,7 @@ function getCachePath(cacheUri, cacheDir) {
     switch (protocol) {
       case 'notion': {
         filename = path.join(
-          cacheDir,
+          this.cacheDir,
           CACHE_NAMESPACE.notion,
           key.replace(/\/|\\/g, '')
         )
