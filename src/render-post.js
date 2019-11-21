@@ -57,7 +57,7 @@ async function renderPost(task) {
       cacheProvider.set(post.cacheUri, nast)
     } else {
       log.info(`Read page cache ${pageID}`)
-      nast = cacheProvider.get(post.cacheUri)
+      nast = await cacheProvider.get(post.cacheUri)
     }
 
     /** Run `beforeRender` plugins. */
