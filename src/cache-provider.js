@@ -99,7 +99,6 @@ class CacheProvider {
           const ans = lastCacheTime > lastEditedTime
           return ans
         } catch (error) {
-          log.error(error)
           return false
         }
 
