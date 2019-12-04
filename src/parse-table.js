@@ -1,7 +1,7 @@
 const { getOnePageAsTree } = require('nast-util-from-notionapi')
 const { renderToHTML } = require('nast-util-to-html')
 
-const { getPageIDFromNotionDatabaseURL } = require('./notion-utils')
+const { getPageIDFromNotionPageURL } = require('./notion-utils')
 const { log } = require('./utils')
 
 // const COLUMN_NAMES = {
@@ -25,7 +25,7 @@ module.exports = {
  * @param {NotionAgent} notionAgent 
  */
 async function parseTable(notionDatabaseURL, notionAgent) {
-  let pageID = getPageIDFromNotionDatabaseURL(notionDatabaseURL)
+  let pageID = getPageIDFromNotionPageURL(notionDatabaseURL)
   let pageCollection = (await getOnePageAsTree(pageID, notionAgent))
 
   /**
